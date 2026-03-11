@@ -56,4 +56,4 @@ RHA spends $6.2M annually on telemedicine. Based on CATEs, redirecting outreach 
 
 ## Authors
 
-Muhammad Sawaiz Fatar, Victor Ostolaza, Vedaant Rath, Arpita Ram Samant, Sam Sheng
+Arpita Ram Samant, Victor Ostolaza, Vedaant Rath, Sam Sheng, Muhammad Sawaiz Fatar
