@@ -1,6 +1,6 @@
 # Synthetic Control and Heterogeneous Treatment Effects in Healthcare Policy
 
-**Sentinel Analytics** | Causal Inference Consulting | Team 01
+**Sentinel Analytics** | Causal Inference Consulting 
 
 ---
 
