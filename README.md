@@ -1,5 +1,7 @@
 # Synthetic Control and Heterogeneous Treatment Effects in Healthcare Policy
 
+Link to report: https://arpitarsamant-ctrl.github.io/Causal_Inference_SC_HTE/
+
 **Sentinel Analytics** | Causal Inference Consulting 
 
 ---
