@@ -1,0 +1,1716 @@
+---
+title: "Project 4: Synthetic Control & Heterogeneous Treatment Effects"
+subtitle: "Case Studies in Healthcare Policy Evaluation"
+author: "Team 01 | Muhammad Sawaiz Fatar, Victor Ostolaza, Vedaant Rath, Arpita Ram Samant, Sam Sheng"
+format: html
+editor: visual
+embed-resources: true
+toc: true
+toc-depth: 5
+toc-location: left
+warning: false
+---
+
+------------------------------------------------------------------------
+
+# 1. Introduction
+
+## Our Firm
+
+**Sentinel Analytics** is a consulting firm focused on healthcare technology adoption and patient outcomes. Our team brings expertise in causal inference, health economics, and data analytics to help healthcare organizations make decisions about technology implementation and policy design.
+
+Our core competencies:
+
+-   Healthcare technology adoption analysis
+-   Patient outcome optimization
+-   Health policy evaluation
+-   Personalized medicine and treatment heterogeneity analysis
+
+## Case 1: Medicaid Expansion, California Health Board
+
+Our first client, the **California Health Board (CHB)**, is the regulatory body overseeing healthcare in California. In 2013, California implemented Medicaid expansion under the Affordable Care Act, significantly increasing coverage eligibility for low-income adults. The CHB asked us: **did this expansion reduce all-cause mortality rates?**
+
+Since only one state (California) underwent the treatment, we apply **Synthetic Control** to construct a weighted combination of non-expanding states that best matches California's pre-expansion mortality trajectory, and use this as the counterfactual.
+
+## Case 2: Telemedicine Adoption, Regional Health Alliance
+
+**Regional Health Alliance (RHA)** is a network of 15 community hospitals and 120+ primary care clinics serving diverse populations across urban, suburban, and rural communities in the Southeastern United States. With over 500,000 active patients, RHA is committed to improving healthcare access while managing costs effectively.
+
+**Background:**
+
+During the COVID-19 pandemic, RHA rapidly expanded its telemedicine infrastructure, investing approximately \$12 million in technology platforms, provider training, and patient outreach. Now, as the acute phase of the pandemic has passed, leadership is evaluating the long-term value and strategic direction of their telemedicine program.
+
+### The Business Challenge
+
+RHA's leadership faces resource allocation decisions regarding their telemedicine program. While telemedicine visits remain popular (representing 23% of all primary care encounters), maintaining the program requires substantial ongoing investment:
+
+-   Platform licensing and maintenance: \$2.4M annually
+-   Provider time and training: \$1.8M annually
+-   Technical support and infrastructure: \$1.2M annually
+-   Patient education and outreach: \$800K annually
+
+**The Central Question:**
+
+*"Does telemedicine improve patient health outcomes, and if so, are the benefits consistent across our diverse patient population, or should we target specific demographic segments for maximum impact?"*
+
+**Why This Matters:**
+
+1.  **Financial Sustainability:** RHA needs to justify continued investment in telemedicine infrastructure versus alternative uses of limited healthcare dollars
+
+2.  **Health Equity:** RHA serves diverse communities with varying levels of digital literacy, internet access, and comfort with technology. Understanding who benefits most from telemedicine is crucial for equitable care delivery
+
+3.  **Strategic Planning:** If benefits vary significantly by patient characteristics, RHA could optimize resource allocation by targeting outreach and support to high-benefit populations
+
+4.  **Policy Development:** State Medicaid programs are reconsidering telehealth reimbursement policies. RHA needs evidence to advocate for appropriate coverage
+
+**Current Uncertainty:**
+
+RHA's preliminary analysis shows mixed results: - Average health outcomes appear similar between telemedicine and in-person visits - Patient satisfaction is high for telemedicine - However, anecdotal evidence suggests outcomes vary significantly by patient age - Some providers report that older patients struggle with technology but highly value the convenience
+
+### Our Approach: Heterogeneous Treatment Effects Analysis
+
+Rather than assuming telemedicine has a uniform effect on all patients (as traditional Average Treatment Effect analysis would), we will use **Heterogeneous Treatment Effects (HTE)** methods to understand how the impact of telemedicine varies across patient characteristics, particularly **age**.
+
+**Why Focus on Age?**
+
+Recent CDC data (2021 National Health Interview Survey) reveals that telemedicine adoption increases significantly with age: - Ages 18-29: 29.4% used telemedicine - Ages 30-44: 35.3% used telemedicine\
+- Ages 45-64: 38.9% used telemedicine - Ages 65+: 43.3% used telemedicine
+
+This pattern is counterintuitive given common assumptions about older adults and technology. It suggests that age may affect telemedicine effectiveness through:
+
+-   **Health needs:** Older adults have more chronic conditions requiring regular monitoring
+-   **Mobility constraints:** Transportation barriers make remote care more valuable
+-   **Time availability:** Retirees have more flexible schedules for virtual appointments
+-   **Digital divide:** But also face more technology challenges
+
+### Our framework for analysis:
+
+We will use these approaches:
+
+1.  **Meta-Learners** (S-Learner, T-Learner, X-Learner)
+    -   These machine learning approaches will estimate individualized treatment effects
+    -   We can identify which patient profiles benefit most from telemedicine
+2.  **Causal Random Forests**
+    -   Discovers complex, non-linear patterns in treatment heterogeneity
+    -   Identifies important effect modifiers beyond age (eg, comorbidities, rural/urban status)
+
+### What the client expect from our outcomes:
+
+By the end of this analysis, RHA will have:
+
+1.  **Conditional Average Treatment Effects (CATEs):** Estimates of telemedicine impact for different patient subgroups
+2.  **Targeting Recommendations:** Identification of high-benefit populations for focused outreach
+3.  **Resource Allocation Guidance:** recommendations for program investment levels
+4.  **Policy Insights:** inform reimbursement and coverage
+
+------------------------------------------------------------------------
+
+# 2. Summary
+
+## Case 1: Medicaid Expansion (Synthetic Control)
+
+### Background
+
+California expanded Medicaid in 2014, making it one of the earliest large states to do so under the ACA. The CHB wants to know whether this expansion causally reduced all-cause mortality rates, a critical metric for evaluating the policy's population health impact.
+
+### Case Setup
+
+-   A single US state is the unit of measurement
+-   Only California underwent Medicaid expansion (treatment); 8 control states did not expand for a prolonged period
+-   Outcome: all-cause mortality rate (% of population)
+-   Confounders: median household income, uninsured rate, hospital beds per 1,000, % population aged 65+
+
+### DAG
+
+![](DAG4-1.png)
+
+-   **All-cause mortality rate**, outcome variable
+-   **Medicaid expansion**, treatment variable
+-   **Median Household Income:** Wealthier states have more fiscal capacity to fund expansion (→ treatment) and better health resources reducing mortality (→ outcome)
+-   **Uninsured Rate:** Higher uninsured rates create political pressure for expansion (→ treatment) and reduce preventive care (→ outcome)
+-   **Beds per 1,000 People:** Stronger infrastructure makes expansion more feasible (→ treatment) and improves care access (→ outcome)
+-   **% Population Over 65:** High Medicare penetration reduces urgency for Medicaid (→ treatment); older populations face naturally higher mortality (→ outcome)
+
+### Method Used
+
+We use **Synthetic Control** because there is only one treated unit. We construct a weighted combination of control states that best replicates California's pre-treatment mortality trends, then use the post-treatment gap between actual and synthetic California as our treatment effect estimate. Inference is conducted via a placebo test.
+
+### Results
+
+The treatment effect is significant. In 2015, California's mortality rate was **0.1305 percentage points lower** than the synthetic counterfactual; in 2016, it was **0.2586 percentage points lower**, indicating Medicaid expansion meaningfully reduced all-cause mortality.
+
+### Implications for the CHB
+
+These findings suggest that the California Health Board's Medicaid expansion policy was **effective in improving population health**. The results can guide the client in:
+
+-   **Future expansions** or adjustments to Medicaid eligibility.
+
+-   **Policy evaluation frameworks** for assessing similar healthcare reforms in the future.
+
+-   Overall, the analysis provides **evidence-based support** for the continued use and potential scaling of the policy.
+
+------------------------------------------------------------------------
+
+## Case 2: Telemedicine Adoption (HTE)
+
+### Research Question
+
+> **Primary Question:** Does telemedicine adoption improve patient health outcomes (measured by health-related quality of life scores), and do these effects vary systematically by patient age?
+
+**Secondary Questions:** - Which patient subgroups benefit most from telemedicine access? - Are there patient segments for whom telemedicine is inferior to traditional care? - How should RHA allocate resources to maximize population health impact?
+
+### Methods Overview
+
+We will implement the following HTE estimation approaches:
+
+1.  **S-Learner (Single Learner)**
+    -   Estimates a single model including treatment as a covariate
+    -   Baseline approach for comparison
+2.  **T-Learner (Two Learner)**
+    -   Estimates separate models for treated and control groups
+    -   Captures treatment-specific patterns
+3.  **X-Learner (Cross Learner)**
+    -   Two stage approach with imputed counterfactuals
+    -   More efficient with imbalanced treatment groups
+4.  **Causal Random Forest**
+    -   Directly optimizes for treatment effect heterogeneity with honest estimation
+    -   Doubly-robust inference with built-in variance estimates
+    -   Supports post-hoc tests: Best Linear Projection (BLP) and Rank-weighted Average Treatment Effect (RATE)
+
+### Results Preview
+
+All four methods agree on a positive but modest **Average Treatment Effect** (ATE ≈ 0.8–1.0 HRQoL points), which on its own would not justify large program changes. However, the CATE analysis reveals substantial heterogeneity masked by this average:
+
+-   Younger patients (ages 18–40) experience **negative** treatment effects (−1 to −4 HRQoL points)
+-   Older patients (ages 60–90) experience **positive** treatment effects (+2 to +4 HRQoL points)
+-   The Causal Random Forest's Best Linear Projection confirms this: each additional year of age increases the CATE by **0.124 HRQoL points** (p \< 0.001)
+-   The crossover point, where telemedicine shifts from harmful to beneficial, falls around age 45–50
+
+### Implications for RHA
+
+The findings support a **targeted telemedicine strategy** rather than a one-size-fits-all rollout:
+
+1.  **Invest heavily in telemedicine for patients aged 50+**, where the program delivers the clearest health gains (up to 3.5 points for the 80–90 cohort)
+2.  **Reconsider or redesign telemedicine delivery for patients under 40**, where outcomes are worse on average, this may require enhanced digital support or hybrid care models
+3.  **Do not rely on the ATE alone**: the near-zero aggregate effect hides meaningful age-specific effects in both directions, universal program decisions would simultaneously over-serve some patients and under-serve others
+
+------------------------------------------------------------------------
+
+# 3. Data Simulation
+
+## Case 1: Medicaid Expansion Panel Data
+
+### Facts Behind Data Simulation
+
+-   We will be studying panel data for California, and these other states- Texas, Florida, Georgia, Alabama, Mississippi, South Carolina, Tennessee and Wyoming, as they did not undergo medicaid expansion after California for a very long time.
+
+-   <div>
+
+    ## Panel Data: Uninsured Rate, Income, Hospital Beds, and Population Age 65+
+
+    </div>
+
+    | State | Year | Uninsured Rate (%) | Median Household Income (\$) | Hospital Beds per 1,000 | Population Age 65+ (%) |
+    |----|----|----|----|----|----|
+    | Alabama | 2012 | 15.5 | 43,500 | 3.10 | 14.4 |
+    | Alabama | 2013 | 16.0 | 44,200 | 3.10 | 14.9 |
+    | Alabama | 2014 | 14.1 | 43,400 | 3.10 | 15.4 |
+    | Alabama | 2015 | 12.0 | 45,300 | 3.00 | 15.8 |
+    | Alabama | 2016 | 10.9 | 46,300 | 3.10 | 16.1 |
+    | California | 2012 | 20.1 | 61,000 | 1.90 | 12.1 |
+    | California | 2013 | 19.4 | 62,000 | 1.80 | 12.6 |
+    | California | 2014 | 14.1 | 62,800 | 1.80 | 12.9 |
+    | California | 2015 | 9.7 | 65,300 | 1.80 | 13.3 |
+    | California | 2016 | 8.4 | 67,700 | 1.80 | 13.7 |
+    | Florida | 2012 | 24.1 | 47,100 | 2.80 | 18.2 |
+    | Florida | 2013 | 24.4 | 47,400 | 2.70 | 18.7 |
+    | Florida | 2014 | 20.2 | 48,100 | 2.70 | 19.2 |
+    | Florida | 2015 | 16.3 | 50,100 | 2.60 | 19.6 |
+    | Florida | 2016 | 15.3 | 50,900 | 2.60 | 20.0 |
+    | Georgia | 2012 | 20.9 | 49,400 | 2.50 | 11.5 |
+    | Georgia | 2013 | 21.2 | 49,300 | 2.50 | 12.0 |
+    | Georgia | 2014 | 17.9 | 50,000 | 2.40 | 12.4 |
+    | Georgia | 2015 | 15.8 | 51,900 | 2.40 | 12.7 |
+    | Georgia | 2016 | 14.8 | 53,600 | 2.40 | 13.3 |
+    | Mississippi | 2012 | 19.7 | 38,800 | 4.30 | 13.4 |
+    | Mississippi | 2013 | 19.7 | 39,100 | 4.30 | 13.9 |
+    | Mississippi | 2014 | 16.8 | 40,200 | 4.20 | 14.4 |
+    | Mississippi | 2015 | 14.6 | 41,100 | 4.10 | 14.8 |
+    | Mississippi | 2016 | 13.8 | 41,800 | 4.00 | 15.1 |
+    | South Carolina | 2012 | 19.4 | 45,500 | 2.70 | 14.8 |
+    | South Carolina | 2013 | 18.6 | 45,400 | 2.70 | 15.3 |
+    | South Carolina | 2014 | 16.1 | 45,900 | 2.50 | 15.9 |
+    | South Carolina | 2015 | 12.9 | 47,800 | 2.50 | 16.4 |
+    | South Carolina | 2016 | 11.8 | 49,500 | 2.50 | 16.9 |
+    | Tennessee | 2012 | 16.2 | 45,600 | 3.10 | 14.2 |
+    | Tennessee | 2013 | 16.3 | 45,600 | 3.10 | 14.6 |
+    | Tennessee | 2014 | 13.9 | 45,000 | 3.10 | 15.0 |
+    | Tennessee | 2015 | 12.1 | 47,900 | 3.00 | 15.4 |
+    | Tennessee | 2016 | 10.8 | 48,500 | 2.90 | 15.7 |
+    | Texas | 2012 | 25.0 | 53,300 | 2.40 | 10.9 |
+    | Texas | 2013 | 24.6 | 53,300 | 2.30 | 11.2 |
+    | Texas | 2014 | 21.3 | 53,800 | 2.30 | 11.5 |
+    | Texas | 2015 | 19.0 | 56,400 | 2.30 | 11.7 |
+    | Texas | 2016 | 18.7 | 56,600 | 2.20 | 12.0 |
+    | Wyoming | 2012 | 18.3 | 57,400 | 3.30 | 13.0 |
+    | Wyoming | 2013 | 14.7 | 60,500 | 3.30 | 13.3 |
+    | Wyoming | 2014 | 14.2 | 57,800 | 3.10 | 13.5 |
+    | Wyoming | 2015 | 12.1 | 61,000 | 3.10 | 14.2 |
+    | Wyoming | 2016 | 12.7 | 59,900 | 2.90 | 15.0 |
+
+-   Links:
+
+    -   <https://nces.ed.gov/programs/digest/d17/tables/dt17_102.30.asp>
+
+    -   <https://www.kff.org/state-health-policy-data/state-indicator/people-0-64-uninsured-rate-federal-poverty-level-fpl/?currentTimeframe=11&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D>
+
+    -   <https://www.kff.org/state-health-policy-data/state-indicator/beds-by-ownership/?currentTimeframe=8&selectedDistributions=total&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D>
+
+    -   <https://www.kff.org/state-health-policy-data/state-indicator/distribution-by-age/?dataView=1&currentTimeframe=7&sortModel=%7B%22colId%22:%22Location%22,%22sort%22:%22asc%22%7D>
+
+### AI Prompt Used
+
+*Panel Data: Uninsured Rate, Income, Hospital Beds, and Population Age 65+ STATE YEAR UNINSURED RATE (%) MEDIAN HOUSEHOLD INCOME (\$) HOSPITAL BEDS PER 1,000 POPULATION AGE 65+ (%) Alabama 2012 15.5 43,500 3.10 14.4 Alabama 2013 16.0 44,200 3.10 14.9 Alabama 2014 14.1 43,400 3.10 15.4 Alabama 2015 12.0 45,300 3.00 15.8 Alabama 2016 10.9 46,300 3.10 16.1 California 2012 20.1 61,000 1.90 12.1 California 2013 19.4 62,000 1.80 12.6 California 2014 14.1 62,800 1.80 12.9 California 2015 9.7 65,300 1.80 13.3 California 2016 8.4 67,700 1.80 13.7 \[...\] These are the underlying stats. All cause mortality rate is the outcome variable. Medicaid expansion is the treatment variable. \[confounders and their relationships as above\]. Synthesize Panel data with the columns state, year, uninsured rate, median household income, hospital beds per 1000 people, and percent people over 65 and medicaid expansion (treatment). Only California undergoes treatment 2014 onwards. This treatment most likely reduces mortality rates. I am using R. Give the R code for synthesis.*
+
+### Data Synthesis Code
+
+```{r}
+# =============================================================================
+# Case 1 Libraries
+# =============================================================================
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(Synth)
+library(skimr)
+library(psych)
+
+# =============================================================================
+# Panel Data Synthesis: Medicaid Expansion & All-Cause Mortality
+# =============================================================================
+# Design:
+#   - Treatment: Medicaid Expansion (California only, 2014 onwards)
+#   - Outcome:   All-Cause Mortality Rate (per 100,000)
+#   - Confounders: Uninsured Rate, Median Household Income,
+#                  Hospital Beds per 1,000, % Population Age 65+
+# =============================================================================
+
+panel_raw <- tribble(
+  ~state,            ~year, ~uninsured_rate, ~median_income, ~hosp_beds_per1000, ~pct_over65,
+  "Alabama",          2012,   15.5,           43500,           3.10,               14.4,
+  "Alabama",          2013,   16.0,           44200,           3.10,               14.9,
+  "Alabama",          2014,   14.1,           43400,           3.10,               15.4,
+  "Alabama",          2015,   12.0,           45300,           3.00,               15.8,
+  "Alabama",          2016,   10.9,           46300,           3.10,               16.1,
+  "California",       2012,   20.1,           61000,           1.90,               12.1,
+  "California",       2013,   19.4,           62000,           1.80,               12.6,
+  "California",       2014,   14.1,           62800,           1.80,               12.9,
+  "California",       2015,    9.7,           65300,           1.80,               13.3,
+  "California",       2016,    8.4,           67700,           1.80,               13.7,
+  "Florida",          2012,   24.1,           47100,           2.80,               18.2,
+  "Florida",          2013,   24.4,           47400,           2.70,               18.7,
+  "Florida",          2014,   20.2,           48100,           2.70,               19.2,
+  "Florida",          2015,   16.3,           50100,           2.60,               19.6,
+  "Florida",          2016,   15.3,           50900,           2.60,               20.0,
+  "Georgia",          2012,   20.9,           49400,           2.50,               11.5,
+  "Georgia",          2013,   21.2,           49300,           2.50,               12.0,
+  "Georgia",          2014,   17.9,           50000,           2.40,               12.4,
+  "Georgia",          2015,   15.8,           51900,           2.40,               12.7,
+  "Georgia",          2016,   14.8,           53600,           2.40,               13.3,
+  "Mississippi",      2012,   19.7,           38800,           4.30,               13.4,
+  "Mississippi",      2013,   19.7,           39100,           4.30,               13.9,
+  "Mississippi",      2014,   16.8,           40200,           4.20,               14.4,
+  "Mississippi",      2015,   14.6,           41100,           4.10,               14.8,
+  "Mississippi",      2016,   13.8,           41800,           4.00,               15.1,
+  "South Carolina",   2012,   19.4,           45500,           2.70,               14.8,
+  "South Carolina",   2013,   18.6,           45400,           2.70,               15.3,
+  "South Carolina",   2014,   16.1,           45900,           2.50,               15.9,
+  "South Carolina",   2015,   12.9,           47800,           2.50,               16.4,
+  "South Carolina",   2016,   11.8,           49500,           2.50,               16.9,
+  "Tennessee",        2012,   16.2,           45600,           3.10,               14.2,
+  "Tennessee",        2013,   16.3,           45600,           3.10,               14.6,
+  "Tennessee",        2014,   13.9,           45000,           3.10,               15.0,
+  "Tennessee",        2015,   12.1,           47900,           3.00,               15.4,
+  "Tennessee",        2016,   10.8,           48500,           2.90,               15.7,
+  "Texas",            2012,   25.0,           53300,           2.40,               10.9,
+  "Texas",            2013,   24.6,           53300,           2.30,               11.2,
+  "Texas",            2014,   21.3,           53800,           2.30,               11.5,
+  "Texas",            2015,   19.0,           56400,           2.30,               11.7,
+  "Texas",            2016,   18.7,           56600,           2.20,               12.0,
+  "Wyoming",          2012,   18.3,           57400,           3.30,               13.0,
+  "Wyoming",          2013,   14.7,           60500,           3.30,               13.3,
+  "Wyoming",          2014,   14.2,           57800,           3.10,               13.5,
+  "Wyoming",          2015,   12.1,           61000,           3.10,               14.2,
+  "Wyoming",          2016,   12.7,           59900,           2.90,               15.0
+)
+
+# -----------------------------------------------------------------------------
+# Data-Generating Process (DGP):
+#   mortality (%) = 0.80
+#                 + 0.08  * (pct_over65     - 13.0)
+#                 - 0.012 * (median_income  - 50000)/1000
+#                 + 0.015 * (uninsured_rate - 18.0)
+#                 - 0.04  * (hosp_beds      - 2.8)
+#                 - 0.12  *  medicaid_expansion      [ATT = -0.12 pp]
+#                 + N(0, 0.02)
+# Realistic range: ~0.6% to ~1.1%
+# -----------------------------------------------------------------------------
+
+set.seed(42)
+
+panel <- panel_raw %>%
+  mutate(
+    # Treatment: California from 2014 onward only
+    medicaid_expansion = as.integer(state == "California" & year >= 2014),
+
+    # Structural DGP
+    mortality_structural =
+        0.80 +
+        0.08   * (pct_over65    - 13.0)          +
+       -0.012  * (median_income - 50000) / 1000  +
+        0.015  * (uninsured_rate - 18.0)          +
+       -0.04   * (hosp_beds_per1000 - 2.8)        +
+       -0.12   *  medicaid_expansion,
+
+    # Stochastic noise
+    noise = rnorm(n(), mean = 0, sd = 0.02),
+
+    # Final outcome
+    all_cause_mortality_pct = round(mortality_structural + noise, 3)
+  ) %>%
+  select(state, year, uninsured_rate, median_income, hosp_beds_per1000,
+         pct_over65, medicaid_expansion, all_cause_mortality_pct)
+```
+
+**Justification of choices:**
+
+-   **Outcome (mortality %):** Linear combination of confounders with Gaussian noise (SD = 0.02). Each covariate coefficient reflects the direction and approximate magnitude of real-world relationships.
+-   **Treatment (Medicaid expansion):** Binary, applied only to California from 2014; no other state expands in this window.
+-   **True ATT = −0.12 pp:** Medicaid expansion reduces all-cause mortality by 0.12 percentage points, consistent with published estimates of Medicaid expansion effects on mortality.
+
+------------------------------------------------------------------------
+
+## Case 2: Telemedicine Cross-Sectional Data
+
+### Conceptual Framework
+
+Our simulation is based on the following causal structure:
+
+**Outcome Variable: Health-Related Quality of Life (HRQoL) Score** - Range: 0-100 (higher is better) - Composite measure including physical function, mental health, and social wellbeing
+
+**Treatment Variable: Telemedicine Adoption** - Binary: 1 = primarily uses telemedicine, 0 = primarily in-person care - **Definition: \>= 50% of primary care visits via telemedicine in past 12 months**
+
+**Key Confounders:** - **Age:** Primary effect modifier of interest
+
+### Directed Acyclic Graph (DAG)
+
+**Key Heterogeneity:** The treatment effect of telemedicine on HRQoL varies by age through multiple channels:
+
+1.  **Positive age interaction:**
+    -   Reduced transportation burden (more valuable for older adults with mobility issues)
+    -   Convenience for managing chronic conditions
+2.  **Negative age interaction:**
+    -   Technology challenges (steeper learning curve for older adults)
+    -   Reduced social contact (may worsen isolation for some seniors)
+
+```{r}
+library(dagitty)
+library(ggdag)
+library(ggplot2)
+library(grid)
+
+# 1) DAG structure
+dag <- dagitty("
+dag {
+  Age -> Telemedicine
+  Age -> HRQoL
+  Telemedicine -> HRQoL
+}
+")
+
+# 2) Fix positions so it forms the clean triangle (like your output)
+coordinates(dag) <- list(
+  x = c(Age = -1, Telemedicine = 0, HRQoL = 1),
+  y = c(Age =  1, Telemedicine = 0, HRQoL = 1)
+)
+
+# 3) Labels outside the dots + variable roles
+lab_df <- data.frame(
+  x = c(-1, 0, 1),
+  y = c( 1, 0, 1),
+  label = c(
+    "Age\n(confounder)",
+    "Telemedicine\n(treatment)",
+    "HRQoL\n(outcome)"
+  ),
+  x_lab = c(-1.15, 0, 1.15),   # push labels outside nodes
+  y_lab = c( 1.10,-0.35, 1.10),
+  hjust = c(1, 0, 0)
+)
+
+# 4) TE label + dashed moderation arrow target (midpoint of T -> Y arrow)
+te_mid_x <- 0.5
+te_mid_y <- 0.5
+
+ggdag(dag, layout = "manual", text = FALSE) +
+  theme_dag() +
+  coord_equal(xlim = c(-1.7, 1.7), ylim = c(-0.7, 1.5), expand = FALSE) +
+
+  # Node labels OUTSIDE nodes
+  geom_text(
+    data = lab_df,
+    aes(x = x_lab, y = y_lab, label = label, hjust = hjust),
+    inherit.aes = FALSE,
+    size = 4
+  ) +
+
+  # Treatment effect label ABOVE the TE line (Telemedicine -> HRQoL)
+  annotate(
+    "text",
+    x = te_mid_x, y = te_mid_y + 0.22,
+    label = "Effect modification\n(heterogeneity)",
+    fontface = "bold",
+    size = 4,
+    angle = 45
+  ) +
+
+  # Dashed arrow from Age to the TE line (effect modification)
+  annotate(
+    "curve",
+    x = -0.95, y = 0.95,
+    xend = te_mid_x, yend = te_mid_y,
+    curvature = 0.25,
+    linetype = "dashed",
+    arrow = arrow(type = "closed", length = unit(0.25, "cm"))
+  ) +
+
+  annotate(
+    "text",
+    x = -0.25, y = 1.20,
+    label = "Treatment Effect:  \u03C4(age)\n(HTE / CATE)",
+    size = 3.5
+  )
+```
+
+### Data Generation Process
+
+#### Distribution Specifications
+
+**Sample Size:** N = 5,000 patients
+
+```{r}
+set.seed(42)
+n <- 5000
+
+# Confounder / effect modifier
+age <- rnorm(n, mean = 55, sd = 18)
+age <- pmax(18, pmin(90, age))
+
+# Treatment assignment: Pr(D=1 | age) increases with age
+age_c <- (age - 55) / 10
+p_D <- plogis(-0.49 + 0.14 * age_c)   # calibrated to give ~30% young, ~43% older-ish
+D <- rbinom(n, 1, p_D)
+
+# Baseline outcome (no treatment): age impacts HRQoL
+Y0 <- 75 - 2.5 * age_c + rnorm(n, 0, 8)
+
+# Heterogeneous treatment effect: increases with age, then flattens (tech friction)
+tau <- 1.6 + 1.2 * age_c - 0.25 * (age_c^2)
+
+# Observed outcome
+Y <- Y0 + D * tau
+Y <- pmax(10, pmin(100, Y))
+
+df <- data.frame(
+  patient_id = 1:n,
+  hrqol = Y,
+  telemedicine = D,
+  age = age,
+  propensity_score = p_D
+)
+
+head(df)
+```
+
+### Justification of Choices
+
+**Outcome Distribution (HRQoL):** - Normal distribution centered around 70-75 is realistic for general adult populations - Standard deviation of \~8 points reflects typical measurement variation in quality of life scales - Negative relationship with age and chronic conditions aligns with evidence - Treatment effect specification allows for non linear age interactions
+
+**Treatment Distribution (Telemedicine Adoption):** - Logistic model reflects binary adoption decision - Positive coefficients on age and chronic conditions match CDC data showing higher adoption among older and sicker patients - Strong positive effect of internet access captures technological requirements - Distance effect reflects access barriers driving virtual care demand
+
+**Treatment Effect Heterogeneity:** The quadratic age specification creates a realistic pattern: - Modest benefit for younger adults (\~2-3 points) - Maximal benefit for middle-aged adults (\~5-6 points)\
+- Good benefit for older adults (\~4-5 points) despite some technology challenges - This creates meaningful heterogeneity for HTE methods to detect
+
+**Sample Size:** N = 5,000
+
+------------------------------------------------------------------------
+
+### Housekeeping
+
+```{r}
+#| echo: true
+
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library("dplyr")
+library("ggplot2")
+library("tidyverse")
+library("grf")
+library("psych")
+library("ranger")
+library("knitr")
+library("kableExtra")
+```
+
+------------------------------------------------------------------------
+
+# 4. Exploratory Data Analysis
+
+## Case 1: Medicaid Expansion
+
+### Basic Summarization
+
+```{r}
+skim(panel)
+```
+
+There are no missing values for any of the variables in any of the years
+
+### Common Trends Check
+
+```{r}
+ctrl_avg <- panel %>%
+  filter(state != "California") %>%
+  group_by(year) %>%
+  summarise(all_cause_mortality_pct = mean(all_cause_mortality_pct), .groups = "drop") %>%
+  mutate(state = "Control Average")
+
+plot_data <- bind_rows(
+  panel %>% select(state, year, all_cause_mortality_pct),
+  ctrl_avg
+)
+
+state_colors <- c(
+  "California"      = "#E63946",
+  "Control Average" = "#000000",
+  "Alabama"         = "#2196F3",
+  "Florida"         = "#FF9800",
+  "Georgia"         = "#9C27B0",
+  "Mississippi"     = "#009688",
+  "South Carolina"  = "#795548",
+  "Tennessee"       = "#607D8B",
+  "Texas"           = "#8BC34A",
+  "Wyoming"         = "#FF5"
+)
+
+ggplot(plot_data, aes(x = year, y = all_cause_mortality_pct, colour = state, group = state)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2) +
+  geom_vline(xintercept = 2013, linetype = "dashed", colour = "grey30", linewidth = 0.8) +
+  scale_colour_manual(values = state_colors) +
+  labs(
+    title    = "Common Trends Check: All-Cause Mortality 2012–2016",
+    x        = "Year",
+    y        = "Mortality Rate (% of population)",
+    colour   = NULL
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "right")
+```
+
+As, we can see, none of the individual states besides Texas, nor the states beside California averaged, have similar trends as California pertaining to mortality rate form 2012-13. Even though Texas has similar trends, if we only consider Texas, we can only run two-by-two DiD, which doesn't allow us to gather any inference.
+
+### Comparison of States on the Various Confounders Prior to 2014
+
+```{r fig.height=16, fig.width=8}
+
+# Pre-treatment averages per state
+balance <- panel %>%
+  filter(year < 2014) %>%
+  group_by(state) %>%
+  summarise(
+    `Uninsured Rate (%)`        = mean(uninsured_rate),
+    `Median Income ($)`         = mean(median_income),
+    `Hospital Beds per 1,000`   = mean(hosp_beds_per1000),
+    `Population Over 65 (%)`    = mean(pct_over65),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(-state, names_to = "confounder", values_to = "value") %>%
+  mutate(group = ifelse(state == "California", "California", "Control States"))
+
+# California reference line per facet
+ca_refs <- balance %>%
+  filter(state == "California") %>%
+  select(confounder, ca_value = value)
+
+ggplot(balance %>% filter(state != "California"),
+       aes(x = reorder(state, value), y = value)) +
+  geom_col(fill = "#457B9D", alpha = 0.8) +
+  geom_hline(data = ca_refs, aes(yintercept = ca_value),
+             colour = "#E63946", linetype = "dashed", linewidth = 0.9) +
+  facet_wrap(~confounder, scales = "free_y", ncol = 1) +
+  labs(
+    title    = "Pre-Treatment Confounder Balance (2012–2013)",
+    subtitle = "Red dashed line = California value",
+    x        = NULL,
+    y        = NULL
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x     = element_text(angle = 35, hjust = 1),
+    legend.position = "none"
+  )
+```
+
+**Hospital Beds**, every control state has more beds per 1,000 than California. California is clearly the lowest. This means newly insured Californians entered a relatively capacity-constrained system.
+
+**Median Income**, California is the richest state by a meaningful margin. No control state comes close. This is a significant imbalance, California's control group is systematically poorer, which alone would predict higher mortality in controls independent of Medicaid.
+
+**Population Over 65**, California is actually on the lower end here. Florida is a clear outlier (oldest). Most controls are older than California, meaning controls face naturally higher mortality pressure from age structure alone.
+
+**Uninsured Rate**, California's pre-treatment uninsured rate (\~20%) sits right around the control average. This is actually the most balanced confounder, the groups are comparable here.
+
+### How to Proceed?
+
+Given that we have only one treated unit, and prior to treatment, none of the other units have similar trends in mortality rate as the treated unit, we should implement synthetic control to get a counterfactual to the treated unit which has similar trends prior to the treatment.
+
+------------------------------------------------------------------------
+
+## Case 2: Telemedicine Adoption
+
+### Descriptive Statistics
+
+```{r}
+#| echo: true
+#| message: false
+
+library(dplyr)
+library(psych)
+
+# Overall summary (exclude ID)
+psych::describe(df %>% select(-patient_id))
+
+```
+
+**What is the mean HRQoL score in our sample?**\
+=75.4 points
+
+**What proportion of patients adopted telemedicine?**\
+= 38%
+
+**What is the age distribution?**\
+**Mean = 54.71, SD = 17.30:** sample is centered around mid-50s with a wide spread (young adults through elderly)
+
+### Treatment vs. Control Comparison - STRATIFIED
+
+```{r}
+#| echo: true
+#| message: false
+
+# Stratified descriptives (Treatment vs Control)
+df %>%
+  group_by(telemedicine) %>%
+  summarize(
+    n = n(),
+    mean_hrqol = mean(hrqol),
+    sd_hrqol   = sd(hrqol),
+    mean_age   = mean(age),
+    sd_age     = sd(age),
+    mean_propensity = mean(propensity_score),
+    sd_propensity   = sd(propensity_score)
+  ) %>%
+  kable(digits = 2, caption = "Descriptive Statistics by Treatment Status")
+```
+
+**How do the treatment and control groups compare?**
+
+The treatment and control groups look similar at a high level: average HRQoL is about 75.3 for the control group versus 75.6 for the treated group, so the raw difference is only around 0.35 points. But the groups are not balanced on age: telemedicine users are older on average (57.2 vs 53.2 years). This suggests selection into telemedicine is not fully random, even though there isn't too much of a difference between the ages of treated and control. It doesn't seem too obvious from the propensity scores either, considering that their propesnity for treatment (or probability of receiving treatement seems to be the same).
+
+### Explaining this to the client: a silly analogy to understand heterogeneity of treatment effects
+
+imagine we're judging whether adding hot sauce makes a meal taste better.
+
+If we average everyone together, it looks like: "Hot sauce changes the taste score by nothing, WE GUYS LIKE THE SPICE LEVEL EITHER WAY!!"
+
+**But here's the catch:** the people who choose hot sauce aren't random. They're more like the spice veterans, while the no–hot sauce group has more spice rookies. So comparing the two groups straight up is like saying hot sauce doesn't matter because you mixed together:
+
+-   people who love spice (it improves their meal a lot), and
+-   people who hate spice (it ruins their meal).
+
+When we average those two reactions, they can cancel out and look like no effect, even though the effect is very real. **It just depends on who you are.**
+
+**That's exactly what heterogeneity means here: telemedicine might help some age groups more than others, so we shouldn't rely on one overall average and call it a day.**
+
+### Visualizing outcome by age, stratified by treatment
+
+```{r}
+#| echo: true
+#| message: false
+
+library(ggplot2)
+
+# HRQoL by age stratified by treatment status
+ggplot(df, aes(x = age, y = hrqol, color = factor(telemedicine))) +
+  geom_point(alpha = 0.25)  +
+  labs(
+    x = "Age (years)",
+    y = "Health-Related Quality of Life (HRQoL)",
+    color = "Telemedicine",
+    title = "Health Outcomes by Age, stratified by Telemedicine Adoption"
+  ) +
+  scale_color_discrete(labels = c("0" = "No", "1" = "Yes")) +
+  theme_minimal()
+```
+
+**What patterns do we observe?**
+
+HRQoL or health outcomes generally declines with age. You can literally see the whole point cloud tilt downward as age increases: younger patients are more concentrated around the high 70s/80s, and older patients have more observations in the low/mid 70s and below.
+
+There's a lot of overlap between telemedicine users and non users at almost every age. That's good for common support intuition. We're not in a situation where one color only exists in one age range. But it also means we can't eyeball a clean telemedicine effect just from the dots because the noise is big.
+
+So: age clearly matters for the outcome, and treatment groups overlap, but the raw scatter doesn't give you a crisp treatment story yet.
+
+### Adding a trendline to our scatter plot
+
+```{r}
+#| echo: true
+#| message: false
+
+library(ggplot2)
+
+
+ggplot(df, aes(x = age, y = hrqol, color = factor(telemedicine))) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = TRUE) +
+  labs(
+    x = "Age (years)",
+    y = "Health-Related Quality of Life (HRQoL)",
+    color = "Telemedicine",
+    title = "Health Outcomes by Age, stratified by Telemedicine Adoption + trend lines"
+  ) +
+  scale_color_discrete(labels = c("0" = "No", "1" = "Yes")) +
+  theme_minimal()
+```
+
+**How do we interpret the trend lines?**
+
+**Both lines slope downward:** health outcomes tends to decline with age regardless of telemedicine adoption.
+
+The telemedicine (Yes) and non telemedicine (No) lines are not parallel and they separate more at older ages (and are closer / even slightly reversed at younger ages). This convergence/divergence is a visual cue to our treatment effect varying across diferent age groups. That is, **heterogeneous treatment effects.** So, when the TE varies with a covariate, a single ATE can hide what's going on.
+
+We see **pile-ups** at the youngest and oldest ages. This indicates weaker overlap (an imbalance in treated vs. control) at the extremes, meaning we have fewer comparable patients there. As a result, CATE estimates for very young or very old ages will be less reliable **so we should interpret effects at the tails cautiously (or trim those age ranges).**
+
+### Distribution of Key Variable: Age distribution by treatment
+
+```{r}
+
+#| echo: true
+#| message: false
+
+library(ggplot2)
+
+ggplot(df, aes(x = age, fill = factor(telemedicine))) +
+  geom_histogram(position = "identity", bins = 30, alpha = 0.45) +
+  labs(
+    title = "Age Distribution by Telemedicine Adoption",
+    x = "Age (years)",
+    y = "Count",
+    fill = "Telemedicine"
+  ) +
+  scale_fill_discrete(labels = c("0" = "No", "1" = "Yes")) +
+  theme_minimal()
+```
+
+-   The **telemedicine group skews very subtly towards older**. You see more "Yes" patients in the **middle to older age ranges** (roughly 50–75) compared to the "No" group. The **non telemedicine group has a few younger patients**, especially in the 20s–40s. However, it isn't strikingly apparent that heterogeneity exists from this chart.
+
+-   One good thing is that there's still **a lot of overlap** across most ages (both groups exist in the same age ranges. it means we can compare treated vs. control for many ages. We can find 'similar looking people to compare since there is a signifcant overlap in ages.
+
+-   The **spikes at the very ends** (around \~18 and \~90) are partly due to how we generated age (we capped ages at 18 and 90), so those bins get bunched.
+
+### DiM by age bins
+
+```{r}
+#| echo: true
+#| message: false
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+
+#age bins anddim
+dim_by_age <- df %>%
+  mutate(age_bin = cut(age,
+                       breaks = c(18, 30, 40, 50, 60, 70, 80, 90),
+                       include.lowest = TRUE,
+                       labels = c("18-30", "30-40", "40-50", "50-60", "60-70", "70-80", "80-90"))) %>%
+  group_by(age_bin, telemedicine) %>%
+  summarize(mean_hrqol = mean(hrqol, na.rm = TRUE),
+            n = n(),
+            .groups = "drop") %>%
+  pivot_wider(
+    names_from = telemedicine,
+    values_from = c(mean_hrqol, n),
+    names_glue = "{.value}_{telemedicine}"
+  ) %>%
+  mutate(diff = mean_hrqol_1 - mean_hrqol_0)
+
+#table
+kable(dim_by_age,
+      digits = 2,
+      col.names = c("Age Bin", "Mean HRQoL (No Tele)", "Mean HRQoL (Tele)",
+                    "N (No Tele)", "N (Tele)", "Difference"),
+      caption = "Difference-in-Means by Age Bin")
+
+
+# Plotting stuff
+ggplot(dim_by_age, aes(x = age_bin, y = diff, fill = diff > 0)) +
+  geom_col(width = 0.7) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "black", linewidth = 0.5) +
+  scale_fill_manual(values = c("TRUE" = "#2E86AB", "FALSE" = "#A23B72"),
+                    guide = "none") +
+  labs(
+    x = "Age Bin",
+    y = "Difference in Means (DiM)",
+    title = "Naive Treatment-Control Gap by Age Bin",
+    subtitle = "Difference in average HRQoL between telemedicine users and non-users"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(face = "bold")
+  )
+```
+
+**What is this chart telling us?**
+
+What we did here is: We took the difference between treated and control groups' averages to see if there's a difference in their averages when binned together. This clearly shows that the treatment is not the same across age groups - there is HETEROGENEITY IN TREATMENT.
+
+**Clear Age-Based Heterogeneity:**
+
+-   Younger patients (18-40): Telemedicine appears HARMFUL (negative DiM). On average, young telemedicine users have 1-4 points LOWER HRQoL than young in-person patients
+
+-   Crossover around age 40-50: The effect switches from negative to positive
+
+-   Older patients (50-90): Telemedicine appears BENEFICIAL (positive DiM). The benefit INCREASES with age, reaching \~3.5 points higher HRQoL for the 80-90 group
+
+-   Clear gradient: The treatment effect systematically increases with age - this is textbook heterogeneous treatment effects
+
+### EDA Findings
+
+#### Technical Explanation:
+
+Based on the EDA, we observe:
+
+1.  **Non-parallel LOESS curves indicate effect modification by age.** The treatment and control group trends diverge systematically across age ranges, violating the constant treatment effect assumption. This needs flexible HTE methods (meta-learners) that can estimate τ(x) rather than assuming τ is constant.
+
+2.  **good covariate overlap but concentration at extremes.** Both treatment groups span ages 18-90, satisfying common support, but density is lower at tails. This imbalance favors X-Learner (efficient with unequal group sizes) and suggests caution when interpreting CATEs for ages \<25 or \>85 due to higher variance.
+
+3.  **Non linear relationships suggest need for flexible models.** The curved LOESS fits and non monotonous DiM pattern show non-linear relationships between age, treatment, and outcome. Tree-based methods (Random Forests in meta-learners and Causal Random Forests) will better capture these patterns than linear models.
+
+These patterns suggest that flexible, non parametric HTE methods are necessary to CATEs while accounting for selection bias and non linear effect modification.
+
+#### Client Explanation:
+
+Based on our preliminary data exploration, we observe:
+
+1.  **Telemedicine's impact clearly varies by age.** The visual trends show younger and older patients responding differently to telemedicine - not everyone benefits equally. This confirms your intuition that "one-size-fits-all" evaluation would miss the real story.
+
+2.  **We have good data across most ages, but weaker at extremes.** We can reliably estimate effects for the "core" 25-85 age range where you have plenty of patients in both groups. Estimates for very young/old patients will be less certain due to smaller samples.
+
+3.  **The relationships are complex, not simple straight lines.** The effect doesn't change at a constant rate with age - it's curved and nuanced. That's why we need sophisticated machine learning methods rather than simple statistical averages to get accurate answers.
+
+4.  **Telemedicine helps older patients significantly but may harm younger ones.** The raw data shows a 7-point swing from -4 points (ages 18-30) to +3.5 points (ages 80-90). If confirmed, this means your current universal approach is suboptimal for both groups.
+
+These findings justify our choice of advanced analytical methods that can handle complexity and give you reliable age-specific recommendations.
+
+------------------------------------------------------------------------
+
+# 5. Methodology
+
+## Synthetic Control
+
+### Non-Technical Description
+
+Imagine you want to know how a diet affected one person's weight, but you have no twin to compare them to, so instead you stitch together a "fake twin" from a weighted blend of other people who ate normally and matched the dieter's pre-diet weight trajectory as closely as possible. Whatever weight difference emerges after the diet starts is your effect.
+
+In our case, California is the dieter, the 8 control states are the other people, and Medicaid expansion is the diet, the synthetic California is a weighted mix of control states that best mimicked California's pre-2014 mortality trend, so the post-2014 gap is our best estimate of what expansion did to mortality.
+
+### Technical Details
+
+Since only California is treated, DiD and regression approaches cannot yield valid inference. Synthetic Control constructs a counterfactual by solving the following nested optimization:
+
+$$
+w^* = \arg\min_{w} \sum_{k=1}^{K} v_k \left(X^{CA}_k - \sum_{s=1}^{8} w_s X^s_k\right)^2
+$$
+
+where predictor weights $v_k$ are themselves chosen to minimize pre-treatment outcome fit:
+
+$$
+V^* = \arg\min_V \sum_{t=2012}^{2013} \left(Y^{CA}_t - \sum_{s=1}^{8} w_s(V)\, Y^s_t\right)^2
+$$
+
+The ATT at each post-treatment period is:
+
+$$
+\widehat{ATT}_t = Y^{CA}_t - \sum_{s=1}^{8} w_s^* Y^s_t, \qquad t \geq 2014
+$$
+
+Inference uses a **placebo test**, each control state takes a turn as the "treated" unit. California's post-treatment gap is significant if it falls outside the distribution of placebo gaps.
+
+### Implementation
+
+```{r}
+# Add numeric state ID
+panel <- panel %>%
+  mutate(state_id = as.numeric(factor(state)))
+
+# California's ID
+ca_id      <- unique(panel$state_id[panel$state == "California"])
+control_ids <- unique(panel$state_id[panel$state != "California"])
+
+dataprep.out <- dataprep(
+  foo                = as.data.frame(panel),
+  predictors         = c("uninsured_rate", "median_income", "hosp_beds_per1000", "pct_over65"),
+  predictors.op      = "mean",
+  dependent          = "all_cause_mortality_pct",
+  unit.variable      = "state_id",
+  time.variable      = "year",
+  special.predictors = list(
+    list("all_cause_mortality_pct", 2012:2013, "mean")
+  ),
+  treatment.identifier  = ca_id,
+  controls.identifier   = control_ids,
+  time.predictors.prior = c(2012:2013),
+  time.optimize.ssr     = c(2012:2013),
+  unit.names.variable   = "state",
+  time.plot             = c(2012:2016)
+)
+```
+
+```{r}
+synth.out <- synth(data.prep.obj = dataprep.out, method = "BFGS")
+```
+
+```{r}
+synth.tables <- synth.tab(dataprep.res = dataprep.out,
+                          synth.res = synth.out)
+```
+
+```{r}
+ synth.tables$tab.v
+```
+
+```{r}
+synth.tables$tab.w
+```
+
+```{r}
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out, Ylab = "Mortality Rate", Xlab = "year", Legend = c("California", "Synthetic California"), Legend.position = "bottomright")
+```
+
+```{r}
+gaps.plot(synth.res = synth.out, dataprep.res = dataprep.out, Ylab = "gap in mortality rate", Xlab = "year", Main = NA)
+```
+
+#### Technical Explanation
+
+California expanded Medicaid 2014 onwards. In our data, it is the single treated unit. In order to estimate a treatment effect, we need a counterfactual. We can use California before and after the treatment starts, as the state itself is very different. When we look at the other states, their average mortality trend is very different from California, and using any single state in a two by two DiD, would not allow us to conduct any inference.
+
+Therefore, the way to proceed is to weight the other states, such that we can create a synthetic California, that looks similar to California prior to the start of the treatment. From this, it logically follow that had California not undergone the treatment (Medicaid expansion), it would have followed a similar path to the control after the start of the treatment. Thus the control serves as a counterfactual to California after the start of the treatment period.
+
+To create the synthetic control, we need weights. These weights are based on counfounders which affected mortality rate in California prior to start of treatment (2012-13)
+
+$$
+\widehat{ATT}_t=Y^{CA}_{\text{Medicaid},t}-\sum_{s=1}^{8} w_s \, Y^{s}_{\text{NoMedicaid},t},\qquad \forall\, t \ge 2014
+$$
+
+The weights are obtained in the following manner
+
+$$
+w^{*}=\arg\min_{w}\sum_{k=1}^{K}v_k\left(X^{CA}_{k}-\sum_{s=1}^{8} w_s X^{s}_{k}\right)^2
+$$
+
+The $v_k$ represents the weights for each of the controls and is obtained by
+
+$$
+V^{*}=\arg\min_{V}\sum_{t=2012}^{2013}\left(Y^{CA}_{t}-\sum_{s=1}^{8} w_s(V)\, Y^{s}_{t}\right)^2
+$$
+
+From our code, we can see that the state. with the highest weight is Texas, which makes sense as it was the closest to California pre-treatment in terms of mortality rate trends. The control with the highest weight is no. of hospital beds per 1000 people. After that, we design synthetic California, and we see that prior to 2014, it follows California pretty closely. Looking at the path and gap plots for \>=2014, we see California's mortality rate deviate downwards from the synthetic control, suggesting a negative treatment effect.
+
+Finally, we run a **Placebo Test** for inference. In this test, we calculate mean squared prediction errors for all states beside California:
+
+$$
+R_s = \frac{\text{MSPE}_{s, \text{post}}}{\text{MSPE}_{s, \text{pre}}}
+$$
+
+$$
+{MSPE}_{s, t < 2014} = \frac{1}{2} \sum_{t=2012}^{2013} \left(Y_{s,t} - \sum_{j \neq s} w_j^* Y_{j,t}\right)^2
+$$
+
+$$
+{MSPE}_{s, t \geq 2014} = \frac{1}{3} \sum_{t=2014}^{2016} \left(Y_{s,t} - \sum_{j \neq s} w_j^* Y_{j,t}\right)^2
+$$
+
+$MSPE_{pre}$ indicates how well pseudo treatment unit was replaced by synthetic control prior to treatment. This should be small for all of the states, including California.
+
+$MSPE_{post}$ indicates how well pseudo treatment unit was replaced by synthetic control after treatment. This should be small for all of the states besides California, and it should be large for California, if California has undergone treatment. From the placebo distribution plot, we see that California's line is near the lower boundary of placebo distribution, thus indicating that the treatment effect is significant. The treatment effect in 2015 is -0.1305 and in 2016 it is -0.2586, thus indicating that in 2015, the mortality rate in California is 13.05 percentage points lower than it would have been had California not undertaken Medicaid expansion, and in 2016, the mortality rate is 25.86 percentage points lower than it would have been if California had not undertaken Medicaid expansion.
+
+### Placebo Test
+
+```{r}
+# Numeric state IDs
+panel <- panel %>%
+  mutate(state_id = as.numeric(factor(state)))
+
+all_ids    <- unique(panel$state_id)
+ca_id      <- unique(panel$state_id[panel$state == "California"])
+control_ids <- unique(panel$state_id[panel$state != "California"])
+
+# Storage matrix: rows = years, cols = each state (placebo units)
+store <- matrix(NA, nrow = length(2012:2016), ncol = length(all_ids))
+colnames(store) <- unique(panel$state[order(panel$state_id)])
+
+# Placebo loop: each state takes a turn as the "treated" unit
+for (iter in all_ids) {
+
+  dataprep.out <- dataprep(
+    foo                   = as.data.frame(panel),
+    predictors            = c("uninsured_rate", "median_income", "hosp_beds_per1000", "pct_over65"),
+    predictors.op         = "mean",
+    dependent             = "all_cause_mortality_pct",
+    unit.variable         = "state_id",
+    unit.names.variable   = "state",
+    time.variable         = "year",
+    special.predictors    = list(
+      list("all_cause_mortality_pct", 2012:2013, "mean")
+    ),
+    treatment.identifier  = iter,
+    controls.identifier   = all_ids[all_ids != iter],
+    time.predictors.prior = 2012:2013,
+    time.optimize.ssr     = 2012:2013,
+    time.plot             = 2012:2016
+  )
+
+  synth.out <- synth(
+    data.prep.obj = dataprep.out,
+    method        = "BFGS"
+  )
+
+  # Store gap: treated - synthetic control
+  store[, iter] <- dataprep.out$Y1plot - (dataprep.out$Y0plot %*% synth.out$solution.w)
+}
+```
+
+```{r}
+rownames(store) <- 2012:2016
+
+gap.start    <- 1
+gap.end      <- nrow(store)
+years        <- 2012:2016
+gap.end.pre  <- which(rownames(store) == "2013")  # last pre-treatment year
+
+# MSPE for each state in pre-treatment period
+mse    <- apply(store[gap.start:gap.end.pre, ]^2, 2, mean)
+ca.mse <- as.numeric(mse[which(colnames(store) == "California")])
+
+# Exclude placebos with MSPE > 5x California's pre-treatment MSPE
+store <- store[, mse < 5 * ca.mse]
+
+# Plot
+plot(years,
+     store[, which(colnames(store) == "California")],
+     ylim  = c(-0.5, 0.5),
+     xlim  = c(2012, 2016),
+     xlab  = "Year",
+     ylab  = "Gap in All-Cause Mortality (%)",
+     type  = "l",
+     lwd   = 2,
+     col   = "black",
+     xaxs  = "i",
+     yaxs  = "i")
+
+# Placebo lines
+for (i in 1:ncol(store)) {
+  lines(years, store[, i], col = "gray")
+}
+
+# California line on top
+lines(years,
+      store[, which(colnames(store) == "California")],
+      lwd = 2, col = "black")
+
+# Reference lines
+abline(v  = 2014, lty = "dotted", lwd = 2)
+abline(h  = 0,    lty = "dashed", lwd = 2)
+abline(v  = 2012)
+abline(v  = 2016)
+abline(h  = -0.5)
+abline(h  =  0.5)
+
+legend("topleft",
+       legend = c("California", "Placebo states"),
+       lty    = c(1, 1),
+       col    = c("black", "gray"),
+       lwd    = c(2, 1),
+       cex    = 0.8)
+
+arrows(2013, -0.35, 2013.5, -0.35, col = "black", length = 0.1)
+text(2012.3, -0.35, "Expansion\nOnset", cex = 0.75)
+
+```
+
+------------------------------------------------------------------------
+
+## HTE: Meta-Learners (S, T, X)
+
+### Non-Technical Description
+
+Rather than asking "what is the average effect of telemedicine?", we ask "what is the effect for a patient *like this one*?" We deploy four machine learning methods, the S-Learner, T-Learner, X-Learner, and Causal Random Forest, to estimate a **Conditional Average Treatment Effect (CATE)**, τ(age), which may differ across the patient population. Each method uses a different strategy for leveraging the data, and comparing them gives us confidence in findings that hold across approaches.
+
+### Technical Setup
+
+All four methods share the same inputs: outcome Y (HRQoL score), treatment W (telemedicine adoption), and the covariate matrix X (age). We use `ranger` (random forests) as the base learner for the meta-learner family, and the `grf` package's dedicated `causal_forest` for the CRF.
+
+```{r}
+# Define outcome, treatment, and covariates
+Y    <- df$hrqol
+W    <- df$telemedicine
+covs <- "age"   # single effect modifier in this simulation
+```
+
+------------------------------------------------------------------------
+
+### S-Learner
+
+#### Description
+
+The S-Learner ("Single Learner") trains **one** model on the full dataset, treating treatment W as just another covariate. Individual CATEs are recovered by predicting each patient's outcome twice, once setting W = 1 and once setting W = 0, and taking the difference:
+
+$$\hat{\tau}^S(x_i) = \hat{\mu}(x_i, 1) - \hat{\mu}(x_i, 0)$$
+
+where $\hat{\mu}(x, w)$ is a random forest trained on $(X, W) \to Y$.
+
+**Limitation in our setting:** Because W is only one of many splits available to the forest, the S-Learner may shrink treatment effect heterogeneity toward zero by preferring splits on other covariates.
+
+#### Implementation
+
+```{r}
+# Fit S-Learner: one forest, treatment is a feature
+s_formula <- as.formula(paste("hrqol ~ telemedicine +", paste(covs, collapse = " + ")))
+s_model   <- ranger(s_formula, data = df, num.trees = 500, write.forest = TRUE)
+
+# Create counterfactual datasets
+df0 <- df; df0$telemedicine <- 0L   # all patients untreated
+df1 <- df; df1$telemedicine <- 1L   # all patients treated
+
+# Predict potential outcomes under each scenario
+y0_hat <- predict(s_model, data = df0)$predictions
+y1_hat <- predict(s_model, data = df1)$predictions
+
+# CATE = treated potential outcome minus untreated potential outcome
+tau_s    <- y1_hat - y0_hat
+df$tau_s <- tau_s
+
+cat("S-Learner ATE:", round(mean(tau_s), 3), "\n")
+summary(tau_s)
+```
+
+```{r}
+# Plot CATE against age with a smoothed trend
+ggplot(df, aes(x = age, y = tau_s)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(se = FALSE, color = "steelblue") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "S-Learner: Estimated CATE by Age",
+    x     = "Age (years)",
+    y     = "Estimated CATE (HRQoL points)"
+  ) +
+  theme_minimal()
+```
+
+------------------------------------------------------------------------
+
+### T-Learner
+
+#### Description
+
+The T-Learner ("Two Learner") fits **separate** response-surface models for the treated and control groups:
+
+$$\hat{\mu}_1(x) = E[Y \mid X = x,\, W = 1], \qquad \hat{\mu}_0(x) = E[Y \mid X = x,\, W = 0]$$
+
+The CATE is then the difference in cross-group predictions:
+
+$$\hat{\tau}^T(x_i) = \hat{\mu}_1(x_i) - \hat{\mu}_0(x_i)$$
+
+**Advantage over S-Learner:** Each forest is free to learn its group's response surface without treatment effect heterogeneity being penalized.
+
+**Limitation:** At extreme ages where one group is sparse (as seen in EDA), predictions rely on extrapolation and variance will be high.
+
+#### Implementation
+
+```{r}
+# Split data by treatment status
+df_t <- subset(df, telemedicine == 1L)   # treated patients
+df_c <- subset(df, telemedicine == 0L)   # control patients
+
+# Formula: outcome on covariates only; treatment is implicit via the group split
+f_covs <- as.formula(paste("hrqol ~", paste(covs, collapse = " + ")))
+
+# Fit separate forests for each group
+m_t <- ranger(f_covs, data = df_t, num.trees = 500, write.forest = TRUE)
+m_c <- ranger(f_covs, data = df_c, num.trees = 500, write.forest = TRUE)
+
+# Predict potential outcomes for ALL patients from each model
+mu1_hat <- predict(m_t, data = df)$predictions   # E[Y(1) | X]
+mu0_hat <- predict(m_c, data = df)$predictions   # E[Y(0) | X]
+
+# CATE
+tau_t    <- mu1_hat - mu0_hat
+df$tau_t <- tau_t
+
+cat("T-Learner ATE:", round(mean(tau_t), 3), "\n")
+summary(tau_t)
+```
+
+```{r}
+ggplot(df, aes(x = age, y = tau_t)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(se = FALSE, color = "darkorange") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "T-Learner: Estimated CATE by Age",
+    x     = "Age (years)",
+    y     = "Estimated CATE (HRQoL points)"
+  ) +
+  theme_minimal()
+```
+
+------------------------------------------------------------------------
+
+### X-Learner
+
+#### Description
+
+The X-Learner is a two-stage refinement of the T-Learner that imputes individual treatment effects using cross-group predictions, then combines them with propensity score weighting.
+
+**Stage 1:** Use the T-Learner to obtain $\hat{\mu}_0(x)$ and $\hat{\mu}_1(x)$.
+
+**Stage 2:** Impute individual treatment effects using the observed outcome in each group and the counterfactual prediction from Stage 1:
+
+-   Treated units: $\tilde{D}^1_i = Y_i - \hat{\mu}_0(x_i)$ (actual treated outcome minus predicted untreated)
+-   Control units: $\tilde{D}^0_i = \hat{\mu}_1(x_i) - Y_i$ (predicted treated minus actual control outcome)
+
+Fit a forest to each set of imputed effects to obtain $\hat{g}_1(x)$ and $\hat{g}_0(x)$.
+
+**Stage 3:** Combine via propensity score $\hat{e}(x) = P(W=1 \mid X=x)$:
+
+$$\hat{\tau}^X(x) = \hat{e}(x)\,\hat{g}_0(x) + \bigl(1 - \hat{e}(x)\bigr)\,\hat{g}_1(x)$$
+
+When $\hat{e}(x)$ is small (few treated), the X-Learner leans on $\hat{g}_1$ (estimated from the larger treated group), making it more efficient than the T-Learner under treatment imbalance.
+
+#### Implementation
+
+```{r}
+# --- Stage 2: Impute ITEs for the TREATED group ---
+# Observed treated outcome minus counterfactual untreated prediction
+D1 <- rep(NA_real_, nrow(df))
+D1[df$telemedicine == 1] <- df$hrqol[df$telemedicine == 1] - mu0_hat[df$telemedicine == 1]
+
+df_D1    <- df[df$telemedicine == 1, , drop = FALSE]
+df_D1$D1 <- D1[df$telemedicine == 1]
+
+# Forest on imputed ITEs for treated group, then predict for all patients
+m_D1   <- ranger(D1 ~ ., data = df_D1[, c(covs, "D1")], num.trees = 500, write.forest = TRUE)
+g1_hat <- predict(m_D1, data = df)$predictions
+
+# --- Stage 2: Impute ITEs for the CONTROL group ---
+# Counterfactual treated prediction minus observed control outcome
+D0 <- rep(NA_real_, nrow(df))
+D0[df$telemedicine == 0] <- mu1_hat[df$telemedicine == 0] - df$hrqol[df$telemedicine == 0]
+
+df_D0    <- df[df$telemedicine == 0, , drop = FALSE]
+df_D0$D0 <- D0[df$telemedicine == 0]
+
+# Forest on imputed ITEs for control group, then predict for all patients
+m_D0   <- ranger(D0 ~ ., data = df_D0[, c(covs, "D0")], num.trees = 500, write.forest = TRUE)
+g0_hat <- predict(m_D0, data = df)$predictions
+
+# --- Stage 3: Propensity score weighting ---
+# Estimate Pr(W=1 | age) via logistic regression
+ps_mod <- glm(telemedicine ~ age, data = df, family = binomial)
+p_hat  <- predict(ps_mod, type = "response")
+
+# Combine: weight g0 by p_hat (probability of treatment) and g1 by 1 - p_hat
+tau_x    <- p_hat * g0_hat + (1 - p_hat) * g1_hat
+df$tau_x <- tau_x
+
+cat("X-Learner ATE:", round(mean(tau_x), 3), "\n")
+summary(tau_x)
+```
+
+```{r}
+ggplot(df, aes(x = age, y = tau_x)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(se = FALSE, color = "forestgreen") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "X-Learner: Estimated CATE by Age",
+    x     = "Age (years)",
+    y     = "Estimated CATE (HRQoL points)"
+  ) +
+  theme_minimal()
+```
+
+------------------------------------------------------------------------
+
+### Meta-Learner Comparison
+
+Having fit all three meta-learners, we compare their CATE distributions side by side. Agreement across learners strengthens confidence; divergence highlights model-specific sensitivities.
+
+```{r}
+# Compile all CATE estimates into one dataframe
+res <- data.frame(
+  id    = seq_len(nrow(df)),
+  age   = df$age,
+  tau_s = tau_s,
+  tau_t = tau_t,
+  tau_x = tau_x,
+  p_hat = p_hat
+)
+
+# Side-by-side histograms
+p1 <- ggplot(res, aes(x = tau_s)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  ggtitle("S-Learner CATE Distribution") + theme_minimal()
+
+p2 <- ggplot(res, aes(x = tau_t)) +
+  geom_histogram(bins = 40, fill = "darkorange", color = "white") +
+  ggtitle("T-Learner CATE Distribution") + theme_minimal()
+
+p3 <- ggplot(res, aes(x = tau_x)) +
+  geom_histogram(bins = 40, fill = "forestgreen", color = "white") +
+  ggtitle("X-Learner CATE Distribution") + theme_minimal()
+
+print(p1); print(p2); print(p3)
+```
+
+```{r}
+# Summary statistics across learners
+cat("--- S-Learner ---\n"); print(summary(res$tau_s))
+cat("--- T-Learner ---\n"); print(summary(res$tau_t))
+cat("--- X-Learner ---\n"); print(summary(res$tau_x))
+```
+
+**Interpretation:** The S-Learner tends to compress the CATE distribution (shrinkage toward the ATE) because the forest treats W as just one of many features. The T-Learner spreads the distribution wider, reflecting each group's independent response surface. The X-Learner sits between the two, leveraging both surfaces while up-weighting the better-estimated side via the propensity score. Consistent signs of the age-gradient across all three learners constitute the primary evidence of treatment heterogeneity.
+
+------------------------------------------------------------------------
+
+## HTE: Causal Random Forest
+
+### Description
+
+The Causal Random Forest (CRF) from the `grf` package directly optimizes for heterogeneity in treatment effects rather than in Y alone. Within each tree, splits are chosen to maximize differences in τ between child nodes. Honest estimation, using separate subsamples to build the tree structure and estimate leaf-level effects, prevents overfitting and yields valid confidence intervals.
+
+The leaf-level CATE estimate solves a locally-weighted doubly-robust objective:
+
+$$\hat{\tau}^{CRF}(x) = \underset{\tau}{\arg\min} \sum_{i \in \text{leaf}(x)} \alpha_i(x) \left[(Y_i - \hat{m}(x_i)) - \tau(W_i - \hat{e}(x_i))\right]^2$$
+
+where $\hat{m}(x)$ is a nuisance model for the outcome and $\hat{e}(x)$ is the propensity score, both estimated via cross-fitting.
+
+**Advantages over meta-learners:** - Honest estimation with built-in variance estimates - Post-hoc tests: Best Linear Projection (BLP) to identify which features drive heterogeneity, and Rank-weighted Average Treatment Effect (RATE) to evaluate targeting value
+
+### ATE
+
+```{r}
+# Prepare covariate matrix (grf requires a matrix, not a data frame)
+X_mat <- as.matrix(df[, covs, drop = FALSE])
+
+# Fit Causal Random Forest
+set.seed(123)
+cf <- causal_forest(X_mat, Y, W, num.trees = 2000)
+
+# Estimate ATE with doubly-robust standard errors
+cf_ate <- average_treatment_effect(cf, target.sample = "all")
+cat(sprintf("CRF ATE: %.3f  (SE: %.3f)\n", cf_ate["estimate"], cf_ate["std.err"]))
+```
+
+### CATE Distribution
+
+```{r}
+# Extract individual CATE estimates
+cate_cf   <- predict(cf)$predictions
+df$tau_cf <- cate_cf
+
+hist(cate_cf, breaks = 40,
+     main = "Causal Random Forest: CATE Distribution",
+     xlab = "Estimated CATE (HRQoL points)",
+     col  = "mediumpurple")
+```
+
+```{r}
+# CATE vs age with smoothed trend
+ggplot(df, aes(x = age, y = tau_cf)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(se = FALSE, color = "mediumpurple") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Causal Random Forest: Estimated CATE by Age",
+    x     = "Age (years)",
+    y     = "Estimated CATE (HRQoL points)"
+  ) +
+  theme_minimal()
+```
+
+### Best Linear Projection (BLP)
+
+The BLP fits a linear approximation of how CATEs covary with features using doubly-robust moments. A significant positive coefficient on `age` confirms that older patients benefit more from telemedicine, and the magnitude quantifies how much the CATE increases per unit of age.
+
+```{r}
+# BLP: linear projection of CATE on age
+best_linear_projection(cf, X_mat)
+```
+
+### RATE and Targeting Analysis
+
+The RATE (Rank-weighted Average Treatment Effect) answers a targeting question: *if RHA prioritizes telemedicine outreach to the patients predicted to benefit most, does the realized benefit match those predictions?* We use a train/evaluate split to avoid inflated estimates from using the same data to both rank and evaluate.
+
+```{r}
+set.seed(123)
+# 50/50 train-evaluate split
+train     <- sample(1:nrow(X_mat), size = floor(nrow(X_mat) / 2))
+
+# Train forest to generate CATE rankings on the holdout sample
+train_cf  <- causal_forest(X_mat[train, , drop = FALSE], Y[train], W[train], num.trees = 2000)
+cate_hold <- predict(train_cf, X_mat[-train, , drop = FALSE])$predictions
+
+# Evaluate forest on holdout sample (doubly-robust evaluation)
+eval_cf   <- causal_forest(X_mat[-train, , drop = FALSE], Y[-train], W[-train], num.trees = 2000)
+
+# Compute RATE
+rate <- rank_average_treatment_effect(eval_cf, list(cate = cate_hold))
+plot(rate,
+     ylab = "Avg treatment effect among patients ranked up to quantile q")
+```
+
+**Interpretation:** The horizontal axis ranks patients from highest to lowest predicted CATE. The vertical axis shows the realized doubly-robust average treatment effect among the top-q fraction. A monotonically decreasing curve (higher effects at low quantiles) confirms that CRF rankings are valid and can guide targeting, RHA can prioritize outreach to high-CATE patients and expect meaningfully larger benefits than from a uniform rollout.
+
+------------------------------------------------------------------------
+
+# 6. Findings
+
+## Case 1: Synthetic Control, Medicaid Expansion
+
+### ATT Estimates
+
+```{r}
+# Recompute California synthetic control for ATT calculation
+dataprep.ca <- dataprep(
+  foo                   = as.data.frame(panel),
+  predictors            = c("uninsured_rate", "median_income", "hosp_beds_per1000", "pct_over65"),
+  predictors.op         = "mean",
+  dependent             = "all_cause_mortality_pct",
+  unit.variable         = "state_id",
+  unit.names.variable   = "state",
+  time.variable         = "year",
+  special.predictors    = list(list("all_cause_mortality_pct", 2012:2013, "mean")),
+  treatment.identifier  = ca_id,
+  controls.identifier   = control_ids,
+  time.predictors.prior = 2012:2013,
+  time.optimize.ssr     = 2012:2013,
+  time.plot             = 2012:2016
+)
+
+synth.ca     <- synth(data.prep.obj = dataprep.ca, method = "BFGS")
+ca_actual    <- panel$all_cause_mortality_pct[panel$state == "California"]
+names(ca_actual) <- panel$year[panel$state == "California"]
+
+ca_synthetic <- as.numeric(dataprep.ca$Y0plot %*% synth.ca$solution.w)
+names(ca_synthetic) <- 2012:2016
+
+att_2015 <- ca_actual["2015"] - ca_synthetic["2015"]
+att_2016 <- ca_actual["2016"] - ca_synthetic["2016"]
+
+cat(sprintf("ATT 2015: %.4f pp\n", att_2015))
+cat(sprintf("ATT 2016: %.4f pp\n", att_2016))
+cat(sprintf("Avg ATT (2015-2016): %.4f pp\n", mean(c(att_2015, att_2016))))
+```
+
+### Technical Summary
+
+The synthetic California closely tracks actual California during the pre-treatment period (2012–2013), validating the fit. After Medicaid expansion begins in 2014, actual California diverges downward from the synthetic control:
+
+-   **ATT 2015: −0.1305 pp**, California's mortality rate was 13.05 percentage points lower than the synthetic counterfactual
+-   **ATT 2016: −0.2586 pp**, California's mortality rate was 25.86 percentage points lower than the synthetic counterfactual
+
+The state receiving the highest weight in the synthetic control is **Texas**, consistent with its being the closest match on pre-treatment mortality trends. Hospital beds per 1,000 received the highest predictor weight, indicating that healthcare infrastructure was the key matching dimension.
+
+The placebo test confirms significance: California's gap lies at the lower boundary of the placebo distribution, indicating the post-treatment deviation is extreme relative to what would be expected by chance.
+
+### Non-Technical Summary for the CHB
+
+Think of the synthetic California as a "statistical twin" of California, built from a weighted blend of non-expanding states that mirrored California's mortality trajectory before 2014. After expansion, the real California pulled away from its twin. By 2016, Californians were dying at a rate 0.26 percentage points lower than they would have without expansion. Given California's population of \~40 million, even small mortality rate reductions translate to thousands of lives saved annually.
+
+### Business Implications for the CHB
+
+| Year | ATT (pp) | Interpretation                               |
+|------|----------|----------------------------------------------|
+| 2015 | −0.1305  | Mortality 13.05 pp lower than counterfactual |
+| 2016 | −0.2586  | Mortality 25.86 pp lower than counterfactual |
+
+The effect appears to strengthen over time, consistent with Medicaid coverage ramping up and preventive care effects accumulating. The CHB should:
+
+1.  **Maintain and strengthen Medicaid eligibility**, the mortality reduction is real and growing
+2.  **Use this framework** to evaluate future coverage expansions or benefit changes
+3.  **Advocate for other states** to expand using this evidence, the effect is not trivial
+
+------------------------------------------------------------------------
+
+## Case 2: HTE, Telemedicine Adoption
+
+### ATE Summary Across Methods
+
+```{r}
+# Compile ATE estimates from all four methods into a summary table
+ate_table <- data.frame(
+  Method = c("S-Learner", "T-Learner", "X-Learner", "Causal Random Forest"),
+  ATE    = c(round(mean(tau_s), 3),
+             round(mean(tau_t), 3),
+             round(mean(tau_x), 3),
+             round(cf_ate["estimate"], 3)),
+  Note   = c("Single forest; shrinkage expected",
+             "Separate forests per group",
+             "Propensity-weighted combination",
+             "Doubly-robust; SE = 0.263, p < 0.001")
+)
+
+kable(ate_table, caption = "Average Treatment Effect Estimates Across Methods", align = "lcc")
+```
+
+All four methods recover a positive ATE in the range of **0.8–1.0 HRQoL points**, indicating that telemedicine adoption is associated with marginally better health outcomes on average. The CRF ATE of 0.979 (SE = 0.263) is statistically significant at the 1% level (z ≈ 3.72). However, this near-zero average **conceals opposing effects across age groups**, as the CATE analysis below demonstrates.
+
+------------------------------------------------------------------------
+
+### CATE Distributions
+
+```{r}
+# Overlay all four CATE distributions in long format
+cate_long <- res %>%
+  select(age, tau_s, tau_t, tau_x) %>%
+  mutate(tau_cf = df$tau_cf) %>%
+  pivot_longer(cols = c(tau_s, tau_t, tau_x, tau_cf),
+               names_to  = "method",
+               values_to = "cate") %>%
+  mutate(method = recode(method,
+    tau_s  = "S-Learner",
+    tau_t  = "T-Learner",
+    tau_x  = "X-Learner",
+    tau_cf = "Causal RF"
+  ))
+
+ggplot(cate_long, aes(x = cate, fill = method)) +
+  geom_histogram(bins = 50, alpha = 0.6, position = "identity") +
+  facet_wrap(~method, scales = "free_y") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    title = "CATE Distributions Across All Four Methods",
+    x     = "Estimated CATE (HRQoL points)",
+    y     = "Count"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+**Technical observation:** The S-Learner's distribution is notably narrower (range: −4 to +3) compared to the T- and X-Learners (range: ±20), reflecting the shrinkage effect when treatment is just one feature among many in a single forest. The Causal RF produces a more disciplined distribution due to its honest estimation procedure and doubly-robust targeting of τ directly. Despite the width differences, all methods show distributions spanning both negative and positive values, confirming genuine heterogeneity rather than estimation noise alone.
+
+------------------------------------------------------------------------
+
+### Age Gradient in Treatment Effects
+
+```{r}
+# Plot all four CATE-vs-age smooths on one panel for direct comparison
+ggplot(cate_long, aes(x = age, y = cate, color = method)) +
+  geom_smooth(se = FALSE, linewidth = 1.1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  labs(
+    title  = "Estimated CATE by Age: All Methods",
+    x      = "Age (years)",
+    y      = "Estimated CATE (HRQoL points)",
+    color  = "Method"
+  ) +
+  theme_minimal()
+```
+
+All four methods produce a **consistently upward-sloping age gradient**:
+
+-   **Below \~45 years:** CATEs are negative across all methods, telemedicine is associated with *worse* health outcomes for younger patients
+-   **Around 45–50 years:** The crossover point where the effect transitions from negative to positive
+-   **Above 50 years:** CATEs are positive and grow with age, peaking in the 70–85 range
+
+This pattern aligns with the raw DiM analysis from the EDA, where the naive gap ranged from −4.06 (ages 18–30) to +3.50 (ages 80–90). The meta-learners are recovering this same signal after adjusting for selection into treatment via their respective modeling strategies.
+
+------------------------------------------------------------------------
+
+### BLP: Statistical Confirmation of Age-Based Heterogeneity
+
+```{r}
+# BLP results table (already run in methodology, re-display here as findings)
+best_linear_projection(cf, X_mat)
+```
+
+The Best Linear Projection from the CRF formally tests whether the age gradient is statistically meaningful:
+
+| Term      | Estimate   | Std. Error | t-value  | p-value      |
+|-----------|------------|------------|----------|--------------|
+| Intercept | −5.811     | 0.894      | −6.50    | \< 0.001     |
+| Age       | **+0.124** | 0.015      | **8.21** | **\< 0.001** |
+
+**Interpretation:** Each additional year of age is associated with a **0.124 point increase in the treatment effect** of telemedicine on HRQoL. This coefficient is statistically significant at the 0.1% level. The intercept of −5.811 implies that for a hypothetical patient aged 0, telemedicine would be strongly harmful, anchoring the linear approximation. At the mean age of 55: predicted CATE ≈ −5.811 + 0.124 × 55 ≈ **1.01**, consistent with the CRF ATE of 0.979.
+
+------------------------------------------------------------------------
+
+### RATE: Is the Heterogeneity Actionable?
+
+The RATE plot evaluates whether the rankings produced by the CRF can be used to improve targeting outcomes.
+
+```{r}
+# Reprint RATE plot for Findings section
+plot(rate,
+     ylab = "Avg treatment effect among patients ranked up to quantile q",
+     main = "RATE: Targeting Value of CRF CATE Rankings")
+```
+
+**Interpretation:** The downward-sloping curve from left to right indicates that patients ranked at the top (high predicted CATE) exhibit the largest realized treatment effects, and the benefit declines as lower-CATE patients are included. This monotonic pattern confirms that:
+
+1.  The CRF rankings carry real information, they correctly identify who benefits most
+2.  A targeted rollout focused on the highest-CATE patients would outperform the uniform ATE
+3.  RHA can use these rankings operationally for outreach prioritization
+
+------------------------------------------------------------------------
+
+### Non-Technical Summary for RHA
+
+Our analysis of 5,000 patients reveals that telemedicine does not deliver the same benefit to everyone, and in fact, **it can harm some patients while helping others**:
+
+-   **On average**, telemedicine improves health outcomes by about 1 point on a 100-point scale. This small average masked the real story.
+-   **For younger patients (under 45)**, telemedicine users scored 1–4 points *lower* than similar patients who used in-person care. Possible reasons: less urgent health needs, preference for in-person interaction, digital friction outweighing convenience benefits.
+-   **For older patients (50+)**, telemedicine users scored 2–4 points *higher*. Mobility constraints, chronic disease management, and time flexibility likely explain this benefit.
+-   **The age crossover is around 45–50 years**, below this threshold the program may be doing harm; above it, there is clear value.
+
+------------------------------------------------------------------------
+
+### Business Implications for RHA
+
+| Patient Segment | Estimated Effect | Recommended Action |
+|----|----|----|
+| Age \< 40 | −1 to −4 HRQoL pts | Redesign delivery: hybrid care, digital concierge support |
+| Age 40–50 | Near zero | Monitor; no strong case for either push or pullback |
+| Age 50–70 | +1.8 to +2.6 HRQoL pts | Maintain and expand telemedicine access |
+| Age 70+ | +2.5 to +3.5 HRQoL pts | Priority investment group; highest return on telemedicine dollar |
+
+**Financial framing:** RHA spends \$6.2M annually on telemedicine infrastructure. If \~38% of 500,000 patients currently use it, roughly 190,000 patients are treated. Based on our CATE estimates, redirecting program resources toward patients 50+ (approximately 55% of RHA's patient base) and supplementing younger patients with hybrid support would maximize aggregate health gains from the same budget.
+
+**Policy implication:** RHA should present this heterogeneity evidence to state Medicaid programs seeking evidence for reimbursement decisions, age-stratified effectiveness data is more compelling for targeted coverage policies than a near-zero ATE.
